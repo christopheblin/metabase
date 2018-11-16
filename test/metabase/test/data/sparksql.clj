@@ -54,9 +54,7 @@
          (when (= context :db)
            {:db (tx/format-name driver database-name)})))
 
-(defn- do-insert!
-  "Insert ROWS-OR-ROWS into TABLE-NAME for the DRIVER database defined by SPEC."
-  [driver spec table-name row-or-rows]
+(defmethod load-data/do-insert! :sparksql [driver spec table-name row-or-rows]
   (let [prepare-key (comp keyword (partial sql.tx/prepare-identifier driver) name)
         rows        (if (sequential? row-or-rows)
                       row-or-rows
@@ -79,13 +77,8 @@
         (catch java.sql.SQLException e
           (jdbc/print-sql-exception-chain e))))))
 
-(defmethod load-data/load-data! :sparksql
-  [driver {:keys [database-name], :as dbdef} {:keys [table-name], :as tabledef}]
-  (let [spec       (spec/database->spec driver :db dbdef)
-        table-name (apply hx/qualify-and-escape-dots (sql.tx/qualified-name-components driver database-name table-name))
-        insert!    (load-data/load-data-add-ids (partial do-insert! driver spec table-name))
-        rows       (load-data/load-data-get-rows driver dbdef tabledef)]
-    (insert! rows)))
+(defmethod load-data/load-data! :sparksql [& args]
+  (apply load-data/load-data-add-ids! args))
 
 (defmethod sql.tx/create-table-sql :sparksql
   [driver {:keys [database-name], :as dbdef} {:keys [table-name field-definitions]}]

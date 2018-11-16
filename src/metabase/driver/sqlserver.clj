@@ -60,9 +60,10 @@
     (keyword "int identity") :type/Integer} column-type)) ; auto-incrementing integer (ie pk) field
 
 
-(defmethod sql-jdbc.conn/connection-details->spec :sqlserver [_ {:keys [user password db host port instance domain ssl]
-                                                                 :or   {user "dbuser", password "dbpassword", db "", host "localhost"}
-                                                                 :as   details}]
+(defmethod sql-jdbc.conn/connection-details->spec :sqlserver
+  [_ {:keys [user password db host port instance domain ssl]
+      :or   {user "dbuser", password "dbpassword", db "", host "localhost"}
+      :as   details}]
   (-> {:applicationName config/mb-app-id-string
        :classname       "com.microsoft.sqlserver.jdbc.SQLServerDriver"
        :subprotocol     "sqlserver"
@@ -97,19 +98,19 @@
 
 ;; See [this page](https://msdn.microsoft.com/en-us/library/ms187752.aspx) for details on the functions we're using.
 
-(defmethod sql.qp/date [:sparksql :default]         [_ _ expr] expr)
-(defmethod sql.qp/date [:sparksql :minute]          [_ _ expr] (hx/cast :smalldatetime expr))
-(defmethod sql.qp/date [:sparksql :minute-of-hour]  [_ _ expr] (date-part :minute expr))
-(defmethod sql.qp/date [:sparksql :hour]            [_ _ expr] (hx/->datetime (hx/format "yyyy-MM-dd HH:00:00" expr)))
-(defmethod sql.qp/date [:sparksql :hour-of-day]     [_ _ expr] (date-part :hour expr))
-(defmethod sql.qp/date [:sparksql :day-of-week]     [_ _ expr] (date-part :weekday expr))
-(defmethod sql.qp/date [:sparksql :day-of-month]    [_ _ expr] (date-part :day expr))
-(defmethod sql.qp/date [:sparksql :day-of-year]     [_ _ expr] (date-part :dayofyear expr))
-(defmethod sql.qp/date [:sparksql :week-of-year]    [_ _ expr] (date-part :iso_week expr))
-(defmethod sql.qp/date [:sparksql :month]           [_ _ expr] (hx/->datetime (hx/format "yyyy-MM-01" expr)))
-(defmethod sql.qp/date [:sparksql :month-of-year]   [_ _ expr] (date-part :month expr))
-(defmethod sql.qp/date [:sparksql :quarter-of-year] [_ _ expr] (date-part :quarter expr))
-(defmethod sql.qp/date [:sparksql :year]            [_ _ expr] (date-part :year expr))
+(defmethod sql.qp/date [:sqlserver :default]         [_ _ expr] expr)
+(defmethod sql.qp/date [:sqlserver :minute]          [_ _ expr] (hx/cast :smalldatetime expr))
+(defmethod sql.qp/date [:sqlserver :minute-of-hour]  [_ _ expr] (date-part :minute expr))
+(defmethod sql.qp/date [:sqlserver :hour]            [_ _ expr] (hx/->datetime (hx/format "yyyy-MM-dd HH:00:00" expr)))
+(defmethod sql.qp/date [:sqlserver :hour-of-day]     [_ _ expr] (date-part :hour expr))
+(defmethod sql.qp/date [:sqlserver :day-of-week]     [_ _ expr] (date-part :weekday expr))
+(defmethod sql.qp/date [:sqlserver :day-of-month]    [_ _ expr] (date-part :day expr))
+(defmethod sql.qp/date [:sqlserver :day-of-year]     [_ _ expr] (date-part :dayofyear expr))
+(defmethod sql.qp/date [:sqlserver :week-of-year]    [_ _ expr] (date-part :iso_week expr))
+(defmethod sql.qp/date [:sqlserver :month]           [_ _ expr] (hx/->datetime (hx/format "yyyy-MM-01" expr)))
+(defmethod sql.qp/date [:sqlserver :month-of-year]   [_ _ expr] (date-part :month expr))
+(defmethod sql.qp/date [:sqlserver :quarter-of-year] [_ _ expr] (date-part :quarter expr))
+(defmethod sql.qp/date [:sqlserver :year]            [_ _ expr] (date-part :year expr))
 
 ;; jTDS is wack; I sense an ongoing theme here. It returns DATEs as strings instead of as java.sql.Dates like every
 ;; other SQL DB we support. Work around that by casting to DATE for truncation then back to DATETIME so we get the
@@ -117,13 +118,13 @@
 ;;
 ;; TODO - I'm not sure we still need to do this now that we're using the official Microsoft JDBC driver. Maybe we can
 ;; simplify this now?
-(defmethod sql.qp/date [:sparksql :day] [_ _ expr]
+(defmethod sql.qp/date [:sqlserver :day] [_ _ expr]
   (hx/->datetime (hx/->date expr)))
 
 ;; Subtract the number of days needed to bring us to the first day of the week, then convert to date
 ;; The equivalent SQL looks like:
 ;;     CAST(DATEADD(day, 1 - DATEPART(weekday, %s), CAST(%s AS DATE)) AS DATETIME)
-(defmethod sql.qp/date [:sparksql :week] [_ _ expr]
+(defmethod sql.qp/date [:sqlserver :week] [_ _ expr]
   (hx/->datetime
    (date-add :day
              (hx/- 1 (date-part :weekday expr))
@@ -132,7 +133,7 @@
 ;; Format date as yyyy-01-01 then add the appropriate number of quarter
 ;; Equivalent SQL:
 ;;     DATEADD(quarter, DATEPART(quarter, %s) - 1, FORMAT(%s, 'yyyy-01-01'))
-(defmethod sql.qp/date [:sparksql :quarter] [_ _ expr]
+(defmethod sql.qp/date [:sqlserver :quarter] [_ _ expr]
   (date-add :quarter
             (hx/dec (date-part :quarter expr))
             (hx/format "yyyy-01-01" expr)))

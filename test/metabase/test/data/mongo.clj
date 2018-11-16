@@ -13,14 +13,14 @@
    :host   "localhost"})
 
 (defn- destroy-db! [driver dbdef]
-  (with-open [mongo-connection (mg/connect (tx/dbdef->connection-details driver dbdef))]
+  (with-open [mongo-connection (mg/connect (tx/dbdef->connection-details driver :server dbdef))]
     (mg/drop-db mongo-connection (tx/escaped-name dbdef))))
 
 (defmethod tx/create-db! :mongo
-  [driver {:keys [table-definitions], :as dbdef} {:keys [skip-drop-db?], :or {skip-drop-db? false}}]
+  [driver {:keys [table-definitions], :as dbdef} & {:keys [skip-drop-db?], :or {skip-drop-db? false}}]
   (when-not skip-drop-db?
     (destroy-db! driver dbdef))
-  (with-mongo-connection [mongo-db (tx/dbdef->connection-details driver dbdef)]
+  (with-mongo-connection [mongo-db (tx/dbdef->connection-details driver :db dbdef)]
     (doseq [{:keys [field-definitions table-name rows]} table-definitions]
       (let [field-names (for [field-definition field-definitions]
                           (keyword (:field-name field-definition)))]

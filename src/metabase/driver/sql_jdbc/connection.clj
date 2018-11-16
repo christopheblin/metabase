@@ -76,7 +76,7 @@
       (u/prog1 (create-connection-pool db)
         (swap! database-id->connection-pool assoc (u/get-id database-or-id) <>)))))
 
-(defn db->jdbc-connection-spec
+(defn db->connection-pool-spec
   "Return a JDBC connection spec for DATABASE. This will have a C3P0 pool as its datasource."
   [database-or-id]
   (db->pooled-connection-spec database-or-id))

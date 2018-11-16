@@ -23,7 +23,7 @@
 (defn query
   "Execute a `honeysql-form` query against `database`, `driver`, and optionally `table`."
   ([driver database honeysql-form]
-   (jdbc/query (sql-jdbc.conn/db->jdbc-connection-spec database)
+   (jdbc/query (sql-jdbc.conn/db->connection-pool-spec database)
                (sql.qp/honeysql-form->sql+args driver honeysql-form)))
   ([driver database table honeysql-form]
    (query driver database (merge {:from [(qualify+escape table)]}

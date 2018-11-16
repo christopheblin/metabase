@@ -231,7 +231,7 @@
   (let [query (assoc query :remark (qputil/query->remark outer-query))]
     (do-with-try-catch
       (fn []
-        (let [db-connection (sql-jdbc.conn/db->jdbc-connection-spec (qp.store/database))]
+        (let [db-connection (sql-jdbc.conn/db->connection-pool-spec (qp.store/database))]
           ((if (seq (:report-timezone settings))
              run-query-with-timezone
              run-query-without-timezone) driver settings db-connection query))))))

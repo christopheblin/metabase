@@ -423,9 +423,9 @@
 
 
 (defmulti notify-database-updated
-  "Notify the driver that the attributes of a `database` have changed. This is specifically relevant in the event that
-  the driver was doing some caching or connection pooling; the driver should release related resources when this is
-  called."
+  "Notify the driver that the attributes of a `database` have changed, or that `database was deleted. This is
+  specifically relevant in the event that the driver was doing some caching or connection pooling; the driver should
+  release ALL related resources when this is called."
   {:arglists '([driver database])}
   dispatch-on-driver
   :hierarchy #'hierarchy)

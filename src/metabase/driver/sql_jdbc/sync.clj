@@ -5,9 +5,11 @@
              [string :as str]]
             [clojure.java.jdbc :as jdbc]
             [clojure.tools.logging :as log]
-            [metabase.driver :as driver]
+            [metabase
+             [driver :as driver]
+             [util :as u]]
             [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn])
-  (:import [java.sql DatabaseMetaData ResultSet]))
+  (:import java.sql.DatabaseMetaData))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                            Interface (Multimethods)                                            |
@@ -52,7 +54,9 @@
 
 (defmulti column->special-type
   "Attempt to determine the special-type of a field given the column name and native type. For example, the Postgres
-  driver can mark Postgres JSON type columns as `:type/SerializedJSON` special type."
+  driver can mark Postgres JSON type columns as `:type/SerializedJSON` special type.
+
+  `database-type` and `column-name` will be strings."
   {:arglists '([driver database-type column-name])}
   driver/dispatch-on-driver
   :hierarchy #'driver/hierarchy)
@@ -79,33 +83,13 @@
 ;;; |                                                   Sync Impl                                                    |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-;; Don't use this anymore! Use the new `jdbc/with-db-metadata` fn
-(defmacro ^:deprecated with-metadata
-  "Execute BODY with `java.sql.DatabaseMetaData` for DATABASE."
-  [[binding _ database] & body]
-  `(with-open [^java.sql.Connection conn# (jdbc/get-connection (sql-jdbc.conn/db->jdbc-connection-spec ~database))]
-     (let [~binding (.getMetaData conn#)]
-       ~@body)))
-
-;; Don't use this anymore! You can just `with-metadata` and `jdbc/result-set-seq` instead!!!
-(defmacro ^:private ^:deprecated with-resultset-open
-  "This is like `with-open` but with JDBC ResultSet objects. Will execute `body` with a `jdbc/result-set-seq` bound
-  the the symbols provided in the binding form. The binding form is just like `let` or `with-open`, but yield a
-  `ResultSet`. That `ResultSet` will be closed upon exit of `body`."
-  [bindings & body]
-  (let [binding-pairs (partition 2 bindings)
-        rs-syms (repeatedly (count binding-pairs) gensym)]
-    `(with-open ~(vec (interleave rs-syms (map second binding-pairs)))
-       (let ~(vec (interleave (map first binding-pairs) (map #(list `~jdbc/result-set-seq %) rs-syms)))
-         ~@body))))
-
 (defn- get-tables
   "Fetch a JDBC Metadata ResultSet of tables in the DB, optionally limited to ones belonging to a given schema."
-  ^ResultSet [^DatabaseMetaData metadata, ^String schema-or-nil, ^String database-name-or-nil]
-  (with-resultset-open [rs-seq (.getTables metadata database-name-or-nil schema-or-nil "%" ; tablePattern "%" = match all tables
-                                           (into-array String ["TABLE", "VIEW", "FOREIGN TABLE", "MATERIALIZED VIEW"]))]
-    ;; Ensure we read all rows before exiting
-    (doall rs-seq)))
+  [^DatabaseMetaData metadata, ^String schema-or-nil, ^String db-name-or-nil]
+  (vec
+   (jdbc/metadata-result
+    (.getTables metadata db-name-or-nil schema-or-nil "%" ; tablePattern "%" = match all tables
+                (into-array String ["TABLE", "VIEW", "FOREIGN TABLE", "MATERIALIZED VIEW"])))))
 
 (defn fast-active-tables
   "Default, fast implementation of `ISQLDriver/active-tables` best suited for DBs with lots of system tables (like
@@ -114,22 +98,21 @@
 
    This is as much as 15x faster for Databases with lots of system tables than `post-filtered-active-tables` (4
    seconds vs 60)."
-  [driver, ^DatabaseMetaData metadata, & [database-name-or-nil]]
-  (with-resultset-open [rs-seq (.getSchemas metadata)]
-    (let [all-schemas (set (map :table_schem rs-seq))
-          schemas     (set/difference all-schemas (excluded-schemas driver))]
-      (set (for [schema schemas
-                 table  (get-tables metadata schema database-name-or-nil)]
-             (let [remarks (:remarks table)]
-               {:name        (:table_name table)
-                :schema      schema
-                :description (when-not (str/blank? remarks)
-                               remarks)}))))))
+  [driver, ^DatabaseMetaData metadata, & [db-name-or-nil]]
+  (let [all-schemas (set (map :table_schem (jdbc/metadata-result (.getSchemas metadata))))
+        schemas     (set/difference all-schemas (excluded-schemas driver))]
+    (set (for [schema schemas
+               table  (get-tables metadata schema db-name-or-nil)]
+           (let [remarks (:remarks table)]
+             {:name        (:table_name table)
+              :schema      schema
+              :description (when-not (str/blank? remarks)
+                             remarks)})))))
 
 (defn post-filtered-active-tables
   "Alternative implementation of `ISQLDriver/active-tables` best suited for DBs with little or no support for schemas.
    Fetch *all* Tables, then filter out ones whose schema is in `excluded-schemas` Clojure-side."
-  [driver, ^DatabaseMetaData metadata  & [database-name-or-nil]]
+  [driver, ^DatabaseMetaData metadata, & [db-name-or-nil]]
   (set (for [table   (filter #(not (contains? (excluded-schemas driver) (:table_schem %)))
                              (get-tables metadata nil nil))]
          (let [remarks (:remarks table)]
@@ -153,62 +136,73 @@
 
 (defn- calculated-special-type
   "Get an appropriate special type for a column with `column-name` of type `database-type`."
-  [driver column-name database-type]
-  (when-let [special-type (column->special-type driver column-name (keyword database-type))]
+  [driver, ^String column-name, ^String database-type]
+  (when-let [special-type (column->special-type driver database-type column-name)]
     (assert (isa? special-type :type/*)
       (str "Invalid type: " special-type))
     special-type))
 
 (defn describe-table-fields
   "Returns a set of column metadata for `schema` and `table-name` using `metadata`. "
-  [^DatabaseMetaData metadata, driver, {schema :schema, table-name :name}, & [database-name-or-nil]]
-  (with-resultset-open [rs-seq (.getColumns metadata database-name-or-nil schema table-name nil)]
-    (set (for [{database-type :type_name, column-name :column_name, remarks :remarks} rs-seq]
-           (merge {:name          column-name
-                   :database-type database-type
-                   :base-type     (database-type->base-type-or-warn driver database-type)}
-                  (when (not (str/blank? remarks))
-                    {:field-comment remarks})
-                  (when-let [special-type (calculated-special-type driver column-name database-type)]
-                    {:special-type special-type}))))))
+  [^DatabaseMetaData metadata, driver, {^String schema :schema, ^String table-name :name}, & [^String db-name-or-nil]]
+  (set
+   (for [{database-type :type_name
+          column-name   :column_name
+          remarks       :remarks} (jdbc/metadata-result
+          (.getColumns metadata db-name-or-nil schema table-name nil))]
+     (merge
+      {:name          column-name
+       :database-type database-type
+       :base-type     (database-type->base-type-or-warn driver database-type)}
+      (when (not (str/blank? remarks))
+        {:field-comment remarks})
+      (when-let [special-type (calculated-special-type driver column-name database-type)]
+        {:special-type special-type})))))
 
 (defn add-table-pks
   "Using `metadata` find any primary keys for `table` and assoc `:pk?` to true for those columns."
   [^DatabaseMetaData metadata, table]
-  (with-resultset-open [rs-seq (.getPrimaryKeys metadata nil nil (:name table))]
-    (let [pks (set (map :column_name rs-seq))]
-      (update table :fields (fn [fields]
-                              (set (for [field fields]
-                                     (if-not (contains? pks (:name field))
-                                       field
-                                       (assoc field :pk? true)))))))))
+  (let [pks (set (map :column_name (jdbc/metadata-result
+                                    (.getPrimaryKeys metadata nil nil (:name table)))))]
+    (update table :fields (fn [fields]
+                            (set (for [field fields]
+                                   (if-not (contains? pks (:name field))
+                                     field
+                                     (assoc field :pk? true))))))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                            Default SQL JDBC metabase.driver impls for sync methods                             |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
+(defn- ->spec [db-or-id-or-spec]
+  (if (u/id db-or-id-or-spec)
+    (sql-jdbc.conn/db->connection-pool-spec db-or-id-or-spec)
+    db-or-id-or-spec))
+
 (defn describe-database
   "Default implementation of `driver/describe-database` for SQL JDBC drivers. Uses JDBC DatabaseMetaData."
-  [driver database]
-  (with-metadata [metadata driver database]
-    {:tables (active-tables driver, ^DatabaseMetaData metadata)}))
+  [driver db-or-id-or-spec]
+  (jdbc/with-db-metadata [metadata (->spec db-or-id-or-spec)]
+    {:tables (active-tables driver metadata)}))
 
 (defn describe-table
   "Default implementation of `driver/describe-table` for SQL JDBC drivers. Uses JDBC DatabaseMetaData."
-  [driver database table]
-  (with-metadata [metadata driver database]
-    (->> (assoc (select-keys table [:name :schema]) :fields (describe-table-fields metadata driver table))
-         ;; find PKs and mark them
-         (add-table-pks metadata))))
+  [driver db-or-id-or-spec table]
+  (jdbc/with-db-metadata [metadata (->spec db-or-id-or-spec)]
+    (->>
+     (assoc (select-keys table [:name :schema]) :fields (describe-table-fields metadata driver table))
+     ;; find PKs and mark them
+     (add-table-pks metadata))))
 
 (defn describe-table-fks
   "Default implementation of `driver/describe-table-fks` for SQL JDBC drivers. Uses JDBC DatabaseMetaData."
-  [driver database table & [database-name-or-nil]]
-  (with-metadata [metadata driver database]
-    (with-resultset-open [rs-seq (.getImportedKeys metadata database-name-or-nil (:schema table) (:name table))]
-      (set (for [result rs-seq]
-             {:fk-column-name   (:fkcolumn_name result)
-              :dest-table       {:name   (:pktable_name result)
-                                 :schema (:pktable_schem result)}
-              :dest-column-name (:pkcolumn_name result)})))))
+  [driver db-or-id-or-spec table & [^String db-name-or-nil]]
+  (jdbc/with-db-metadata [metadata (->spec db-or-id-or-spec)]
+    (set
+     (for [result (jdbc/metadata-result
+                   (.getImportedKeys metadata db-name-or-nil, ^String (:schema table), ^String (:name table)))]
+       {:fk-column-name   (:fkcolumn_name result)
+        :dest-table       {:name   (:pktable_name result)
+                           :schema (:pktable_schem result)}
+        :dest-column-name (:pkcolumn_name result)}))))

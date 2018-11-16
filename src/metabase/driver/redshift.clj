@@ -31,7 +31,7 @@
 ;; See also: [Related Postgres JDBC driver issue on GitHub](https://github.com/pgjdbc/pgjdbc/issues/79)
 ;;           [How to access the equivalent of information_schema.constraint_column_usage in Redshift](https://forums.aws.amazon.com/thread.jspa?threadID=133514)
 (defmethod driver/describe-table-fks :redshift [_ database table]
-  (set (for [fk (jdbc/query (sql-jdbc.conn/db->jdbc-connection-spec database)
+  (set (for [fk (jdbc/query (sql-jdbc.conn/db->connection-pool-spec database)
                             ["SELECT source_column.attname AS \"fk-column-name\",
                                      dest_table.relname    AS \"dest-table-name\",
                                      dest_table_ns.nspname AS \"dest-table-schema\",

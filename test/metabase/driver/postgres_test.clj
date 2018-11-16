@@ -36,11 +36,12 @@
    :subprotocol "postgresql"
    :subname     "//localhost:5432/bird_sightings?sslmode=disable&OpenSourceSubProtocolOverride=true"
    :sslmode     "disable"}
-  (sql-jdbc.conn/connection-details->spec :postgres {:ssl    false
-                                                :host   "localhost"
-                                                :port   5432
-                                                :dbname "bird_sightings"
-                                                :user   "camsaul"}))
+  (sql-jdbc.conn/connection-details->spec :postgres
+    {:ssl    false
+     :host   "localhost"
+     :port   5432
+     :dbname "bird_sightings"
+     :user   "camsaul"}))
 
 ;; ## ssl - check that expected params get added
 (expect
@@ -51,11 +52,12 @@
    :user        "camsaul"
    :sslfactory  "org.postgresql.ssl.NonValidatingFactory"
    :subname     "//localhost:5432/bird_sightings?ssl=true&sslmode=require&OpenSourceSubProtocolOverride=true"}
-  (sql-jdbc.conn/connection-details->spec :postgres {:ssl    true
-                                                :host   "localhost"
-                                                :port   5432
-                                                :dbname "bird_sightings"
-                                                :user   "camsaul"}))
+  (sql-jdbc.conn/connection-details->spec :postgres
+    {:ssl    true
+     :host   "localhost"
+     :port   5432
+     :dbname "bird_sightings"
+     :user   "camsaul"}))
 
 ;; Verify that we identify JSON columns and mark metadata properly during sync
 (expect-with-driver :postgres

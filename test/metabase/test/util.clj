@@ -38,8 +38,7 @@
             [metabase.util.date :as du]
             [toucan.db :as db]
             [toucan.util.test :as test])
-  (:import com.mchange.v2.c3p0.PooledDataSource
-           java.util.TimeZone
+  (:import java.util.TimeZone
            org.apache.log4j.Logger
            org.joda.time.DateTimeZone
            [org.quartz CronTrigger JobDetail JobKey Scheduler Trigger]))
@@ -506,21 +505,16 @@
                                   {:cron-schedule (.getCronExpression ^CronTrigger trigger)
                                    :data          (into {} (.getJobDataMap trigger))}))))}))))))
 
-(defn clear-connection-pool
-  "It's possible that a previous test ran and set the session's timezone to something, then returned the session to
-  the pool. Sometimes that connection's session can remain intact and subsequent queries will continue in that
-  timezone. That causes problems for tests that we can determine the database's timezone. This function will reset the
-  connections in the connection pool for `db` to ensure that we get fresh session with no timezone specified"
-  [db]
-  (when-let [^PooledDataSource conn-pool (:datasource (sql-jdbc.conn/db->pooled-connection-spec db))]
-    (.softResetAllUsers conn-pool)))
-
 (defn db-timezone-id
   "Return the timezone id from the test database. Must be called with `*driver*` bound,such as via `driver/with-driver`"
   []
   (assert driver/*driver*)
   (let [db (data/db)]
-    (clear-connection-pool db)
+    ;; clear the connection pool for SQL JDBC drivers. It's possible that a previous test ran and set the session's
+    ;; timezone to something, then returned the session to the pool. Sometimes that connection's session can remain
+    ;; intact and subsequent queries will continue in that timezone. That causes problems for tests that we can
+    ;; determine the database's timezone.
+    (driver/notify-database-updated driver/*driver* db)
     (data/dataset test-data
       (-> (driver/current-db-time driver/*driver* db)
           .getChronology

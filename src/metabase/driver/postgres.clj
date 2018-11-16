@@ -225,10 +225,11 @@
     (default-base-types column)))
 
 (defmethod sql-jdbc.sync/column->special-type :postgres [_ database-type _]
+  (println "database-type:" database-type) ; NOCOMMIT
   ;; this is really, really simple right now.  if its postgres :json type then it's :type/SerializedJSON special-type
   (case database-type
-    :json :type/SerializedJSON
-    :inet :type/IPAddress
+    "json" :type/SerializedJSON
+    "inet" :type/IPAddress
     nil))
 
 (def ^:private ^:const ssl-params

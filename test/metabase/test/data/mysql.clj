@@ -35,10 +35,10 @@
 (defmethod sql.tx/quote-name :mysql [_ s]
   (str \` s \`))
 
-(defmethod spec/database->spec :mysql [_ spec]
+(defmethod spec/dbdef->spec :mysql [& args]
   ;; allow inserting dates where value is '0000-00-00' -- this is disallowed by default on newer versions of MySQL,
   ;; but we still want to test that we can handle it correctly for older ones
-  (-> (spec/database->spec :sql/test-extensions spec)
+  (-> (apply (get-method spec/dbdef->spec :sql-jdbc/test-extensions) args)
       ;; TODO - could this be passed as a connection PROPERTY instead?
       (update :subname #(str % "&sessionVariables=sql_mode='ALLOW_INVALID_DATES'"))))
 

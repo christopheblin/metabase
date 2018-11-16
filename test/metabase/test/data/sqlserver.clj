@@ -23,27 +23,27 @@
 (defmethod sql.tx/field-base-type->sql-type [:sqlserver :type/Time]       [_ _] "TIME")
 
 
-(def ^:private db-name-suffix-number
-  "To kick other users off of the database when we destroy it, we `ALTER DATABASE SET SINGLE_USER ROLLBACK IMMEDIATE`.
-  This has the side effect of preventing any other connections to the database. If our tests barf for any reason,
-  we're left with a database that can't be connected to until the hanging connection gets killed at some indeterminate
-  point in the future. In other cases, JDBC will attempt to reuse connections to the same database, which fail once it
-  it's in SINGLE_USER mode.
+(defonce ^:private ^{:doc "To kick other users off of the database when we destroy it, we `ALTER DATABASE SET
+  SINGLE_USER ROLLBACK IMMEDIATE`. This has the side effect of preventing any other connections to the database. If
+  our tests barf for any reason, we're left with a database that can't be connected to until the hanging connection
+  gets killed at some indeterminate point in the future. In other cases, JDBC will attempt to reuse connections to the
+  same database, which fail once it it's in SINGLE_USER mode.
 
   To prevent our tests from failing for silly reasons, we'll instead generate database names like
-  `sad-toucan-incidents_100`. We'll pick a random number here."
-  (atom (rand-int 10000)))
+  `sad-toucan-incidents_100`. We'll pick a random number here."}
+  db-name-suffix-number
+  (rand-int 10000))
 
 (defn- +suffix [db-name]
-  (str db-name \_ @db-name-suffix-number))
+  (str db-name \_ db-name-suffix-number))
 
 (defmethod tx/dbdef->connection-details :sqlserver [_ context {:keys [database-name]}]
-  {:host         (tx/db-test-env-var-or-throw :sqlserver :host)
-   :port         (Integer/parseInt (tx/db-test-env-var-or-throw :sqlserver :port "1433"))
-   :user         (tx/db-test-env-var-or-throw :sqlserver :user)
-   :password     (tx/db-test-env-var-or-throw :sqlserver :password)
-   :db           (when (= context :db)
-                   (+suffix database-name))})
+  {:host     (tx/db-test-env-var-or-throw :sqlserver :host)
+   :port     (Integer/parseInt (tx/db-test-env-var-or-throw :sqlserver :port "1433"))
+   :user     (tx/db-test-env-var-or-throw :sqlserver :user)
+   :password (tx/db-test-env-var-or-throw :sqlserver :password)
+   :db       (when (= context :db)
+               (+suffix database-name))})
 
 
 (defmethod sql.tx/drop-db-if-exists-sql :sqlserver [_ {:keys [database-name]}]

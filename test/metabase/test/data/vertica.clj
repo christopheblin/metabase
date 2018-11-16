@@ -36,9 +36,9 @@
 (defmethod tx/dbdef->connection-details :vertica [& _] @db-connection-details)
 
 (defmethod sql.tx/qualified-name-components :vertica
-  ([_]                             [(db-name)])
-  ([db-name table-name]            ["public" (tx/db-qualified-table-name db-name table-name)])
-  ([db-name table-name field-name] ["public" (tx/db-qualified-table-name db-name table-name) field-name]))
+  ([_ _]                             [(db-name)])
+  ([_ db-name table-name]            ["public" (tx/db-qualified-table-name db-name table-name)])
+  ([_ db-name table-name field-name] ["public" (tx/db-qualified-table-name db-name table-name) field-name]))
 
 (defmethod sql.tx/create-db-sql         :vertica [& _] nil)
 (defmethod sql.tx/drop-db-if-exists-sql :vertica [& _] nil)

@@ -60,8 +60,14 @@
   #{{:name (data/format-name "id"), :description nil}
     {:name (data/format-name "comment_after_sync"), :description "added comment"}}
   (data/with-temp-db [db comment-after-sync]
-    ;; modify the source DB to add the comment and resync
-    (tx/create-db! driver/*driver* (assoc-in comment-after-sync [:table-definitions 0 :field-definitions 0 :field-comment] "added comment"), :skip-drop-db? true)
+    ;; modify the source DB to add the comment and resync. The easiest way to do this is just destroy the entire DB
+    ;; and re-create a modified version. As such, let the SQL JDBC driver know the DB is being "modified" so it can
+    ;; destroy its current connection pool
+    (driver/notify-database-updated driver/*driver* db)
+    (let [modified-dbdef (assoc-in comment-after-sync
+                                   [:table-definitions 0 :field-definitions 0 :field-comment]
+                                   "added comment")]
+      (tx/create-db! driver/*driver* modified-dbdef))
     (sync/sync-table! (Table (data/id "comment_after_sync")))
     (db->fields db)))
 
@@ -99,6 +105,7 @@
   #{{:name (data/format-name "table_with_comment_after_sync"), :description "added comment"}}
   (data/with-temp-db [db (basic-table "table_with_comment_after_sync" nil)]
     ;; modify the source DB to add the comment and resync
-    (tx/create-db! driver/*driver* (basic-table "table_with_comment_after_sync" "added comment"), :skip-drop-db? true)
+    (driver/notify-database-updated driver/*driver* db)
+    (tx/create-db! driver/*driver* (basic-table "table_with_comment_after_sync" "added comment"))
     (sync-tables/sync-tables! db)
     (db->tables db)))

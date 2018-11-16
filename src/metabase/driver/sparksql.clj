@@ -95,7 +95,7 @@
 
 ;; workaround for SPARK-9686 Spark Thrift server doesn't return correct JDBC metadata
 (defmethod driver/describe-database :sparksql [_ {:keys [details] :as database}]
-  {:tables (with-open [conn (jdbc/get-connection (sql-jdbc.conn/db->jdbc-connection-spec database))]
+  {:tables (with-open [conn (jdbc/get-connection (sql-jdbc.conn/db->connection-pool-spec database))]
              (set (for [result (jdbc/query {:connection conn}
                                            ["show tables"])]
                     {:name   (:tablename result)
@@ -104,7 +104,7 @@
 
 ;; workaround for SPARK-9686 Spark Thrift server doesn't return correct JDBC metadata
 (defmethod driver/describe-table :sparksql [_ {:keys [details] :as database} table]
-  (with-open [conn (jdbc/get-connection (sql-jdbc.conn/db->jdbc-connection-spec database))]
+  (with-open [conn (jdbc/get-connection (sql-jdbc.conn/db->connection-pool-spec database))]
     {:name   (:name table)
      :schema (:schema table)
      :fields (set (for [result (jdbc/query {:connection conn}
@@ -128,7 +128,7 @@
                   (dissoc :params))]
     (sql-jdbc.execute/do-with-try-catch
      (fn []
-       (let [db-connection (sql-jdbc.conn/db->jdbc-connection-spec database)]
+       (let [db-connection (sql-jdbc.conn/db->connection-pool-spec database)]
          (hive-like/run-query-without-timezone driver settings db-connection query))))))
 
 (defmethod driver/supports? [:sparksql :basic-aggregations]              [_ _] true)

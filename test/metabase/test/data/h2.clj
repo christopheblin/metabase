@@ -75,7 +75,7 @@
   ((get-method execute/execute-sql! :sql-jdbc/test-extensions) driver :server dbdef sql))
 
 ;; Don't use the h2 driver implementation, which makes the connection string read-only & if-exists only
-(defmethod spec/database->spec :h2 [driver context dbdef]
+(defmethod spec/dbdef->spec :h2 [driver context dbdef]
   (dbspec/h2 (tx/dbdef->connection-details driver context dbdef)))
 
 (defmethod load-data/load-data! :h2 [& args]

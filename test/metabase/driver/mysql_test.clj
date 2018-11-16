@@ -15,7 +15,7 @@
              [data :as data]
              [util :as tu]]
             [metabase.test.data
-             [datasets :refer [expect-with-engine]]
+             [datasets :refer [expect-with-driver]]
              [interface :refer [def-database-definition]]]
             [metabase.util.date :as du]
             [toucan.db :as db]
@@ -28,7 +28,7 @@
      [{:field-name "moment", :base-type :type/DateTime}]
      [["0000-00-00"]]]])
 
-(expect-with-engine :mysql
+(expect-with-driver :mysql
   [[1 nil]]
   ;; TODO - use the `rows` function from `metabse.query-processor-test`. Preferrably after it's moved to some sort of
   ;; shared test util namespace
@@ -64,7 +64,7 @@
     (set (map (partial into {}) (db/select ['Field :name :base_type :special_type] :table_id [:in table-ids])))))
 
 ;; By default TINYINT(1) should be a boolean
-(expect-with-engine :mysql
+(expect-with-driver :mysql
   #{{:name "number-of-cans", :base_type :type/Boolean, :special_type :type/Category}
     {:name "id",             :base_type :type/Integer, :special_type :type/PK}
     {:name "thing",          :base_type :type/Text,    :special_type :type/Category}}
@@ -72,7 +72,7 @@
     (db->fields db)))
 
 ;; if someone says specifies `tinyInt1isBit=false`, it should come back as a number instead
-(expect-with-engine :mysql
+(expect-with-driver :mysql
   #{{:name "number-of-cans", :base_type :type/Integer, :special_type :type/Quantity}
     {:name "id",             :base_type :type/Integer, :special_type :type/PK}
     {:name "thing",          :base_type :type/Text,    :special_type :type/Category}}
@@ -83,16 +83,16 @@
       (sync/sync-database! db)
       (db->fields db))))
 
-(expect-with-engine :mysql
+(expect-with-driver :mysql
   "UTC"
   (tu/db-timezone-id))
 
-(expect-with-engine :mysql
+(expect-with-driver :mysql
   "-02:00"
   (with-redefs [metabase.driver/execute-query (constantly {:rows [["2018-01-09 18:39:08.000000 -02"]]})]
     (tu/db-timezone-id)))
 
-(expect-with-engine :mysql
+(expect-with-driver :mysql
   "Europe/Paris"
   (with-redefs [metabase.driver/execute-query (constantly {:rows [["2018-01-08 23:00:00.008 CET"]]})]
     (tu/db-timezone-id)))
@@ -138,7 +138,7 @@
 ;; 2018-08-16, instead of 2018-08-17
 ;;
 ;; This test ensures if our JVM timezone and reporting timezone are Asia/Hong_Kong, we get a correctly formatted date
-(expect-with-engine :mysql
+(expect-with-driver :mysql
   ["2018-04-18T00:00:00.000+08:00"]
   (tu/with-jvm-tz (t/time-zone-for-id "Asia/Hong_Kong")
     (tu/with-temporary-setting-values [report-timezone "Asia/Hong_Kong"]
@@ -161,7 +161,7 @@
 ;; parsing the date using JodateTime's date parser, which is in UTC. The MySQL driver code was assuming that date was
 ;; in the system timezone rather than UTC which caused an incorrect conversion and with the trucation, let to it being
 ;; off by a day
-(expect-with-engine :mysql
+(expect-with-driver :mysql
   ["2018-04-18T00:00:00.000-07:00"]
   (tu/with-jvm-tz (t/time-zone-for-id "Asia/Hong_Kong")
     (tu/with-temporary-setting-values [report-timezone "America/Los_Angeles"]

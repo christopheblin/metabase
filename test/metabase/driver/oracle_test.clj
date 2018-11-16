@@ -3,7 +3,7 @@
   (:require [expectations :refer :all]
             [metabase.driver :as driver]
             [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
-            [metabase.test.data.datasets :refer [expect-with-engine]]
+            [metabase.test.data.datasets :refer [expect-with-driver]]
             [metabase.test.util :as tu]
             [metabase.test.util.log :as tu.log]))
 
@@ -64,6 +64,6 @@
     (tu.log/suppress-output
       (driver/can-connect? :oracle details))))
 
-(expect-with-engine :oracle
+(expect-with-driver :oracle
   "UTC"
   (tu/db-timezone-id))

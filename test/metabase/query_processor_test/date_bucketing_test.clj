@@ -345,7 +345,7 @@
 ;; tests, it's useful for debugging to answer why row counts change
 ;; when the timezone shifts by removing timezones and the related
 ;; database settings
-(datasets/expect-with-engines #{:h2}
+(datasets/expect-with-drivers #{:h2}
   [2 -1 5 -5 2 0 -2 1 -1 1]
   (map #(new-events-after-tz-shift (str "2015-06-" %) pacific-tz)
        ["01" "02" "03" "04" "05" "06" "07" "08" "09" "10"]))
@@ -408,7 +408,7 @@
 ;; This test provides a validation of how many events are gained or
 ;; lost when the timezone is shifted to eastern, similar to the test
 ;; above with pacific
-(datasets/expect-with-engines #{:h2}
+(datasets/expect-with-drivers #{:h2}
   [1 -1 3 -3 3 -2 -1 0 1 1]
   (map #(new-events-after-tz-shift (str "2015-06-" %) eastern-tz)
        ["01" "02" "03" "04" "05" "06" "07" "08" "09" "10"]))
@@ -568,7 +568,7 @@
 ;; find how those counts would change if time was in pacific time. The results of this test are also in the UTC test
 ;; above and pacific test below, but this is still useful for debugging as it doesn't involve changing timezones or
 ;; database settings
-(datasets/expect-with-engines #{:h2}
+(datasets/expect-with-drivers #{:h2}
   [3 0 -1 -2 0]
   (map #(new-weekly-events-after-tz-shift % pacific-tz)
        ["2015-05-31" "2015-06-07" "2015-06-14" "2015-06-21" "2015-06-28"]))
@@ -601,7 +601,7 @@
   (sad-toucan-incidents-with-bucketing :week pacific-tz))
 
 ;; Similar to above this test finds the difference in event counts for each week if we were in the eastern timezone
-(datasets/expect-with-engines #{:h2}
+(datasets/expect-with-drivers #{:h2}
   [1 1 -1 -1 0]
   (map #(new-weekly-events-after-tz-shift % eastern-tz)
        ["2015-05-31" "2015-06-07" "2015-06-14" "2015-06-21" "2015-06-28"]))

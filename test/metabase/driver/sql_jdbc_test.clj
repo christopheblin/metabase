@@ -66,7 +66,7 @@
   (driver/describe-table-fks :h2 (db) @venues-table))
 
 ;;; TABLE-ROWS-SAMPLE
-(datasets/expect-with-engines sql-jdbc-drivers
+(datasets/expect-with-drivers sql-jdbc-drivers
   [["20th Century Cafe"]
    ["25°"]
    ["33 Taps"]
@@ -80,7 +80,7 @@
 
 
 ;;; TABLE-ROWS-SEQ
-(datasets/expect-with-engines sql-jdbc-drivers
+(datasets/expect-with-drivers sql-jdbc-drivers
   [{:name "Red Medicine",                 :price 3, :category_id  4, :id 1}
    {:name "Stout Burgers & Beers",        :price 2, :category_id 11, :id 2}
    {:name "The Apple Pan",                :price 2, :category_id 11, :id 3}

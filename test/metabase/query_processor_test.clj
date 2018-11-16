@@ -17,41 +17,41 @@
 ;;; ---------------------------------------------- Helper Fns + Macros -----------------------------------------------
 
 ;; Event-Based DBs aren't tested here, but in `event-query-processor-test` instead.
-(def ^:private timeseries-engines #{:druid})
+(def ^:private timeseries-drivers #{:druid})
 
-(def ^:const non-timeseries-engines
+(def ^:const non-timeseries-drivers
   "Set of engines for non-timeseries DBs (i.e., every driver except `:druid`)."
-  (set/difference datasets/test-drivers timeseries-engines))
+  (set/difference datasets/test-drivers timeseries-drivers))
 
-(defn non-timeseries-engines-with-feature
+(defn non-timeseries-drivers-with-feature
   "Set of engines that support a given `feature`. If additional features are given, it will ensure all features are
   supported."
   [feature & more-features]
   (let [features (set (cons feature more-features))]
-    (set (for [engine non-timeseries-engines
+    (set (for [engine non-timeseries-drivers
                :when  (set/subset? features (driver.u/features engine))]
            engine))))
 
-(defn non-timeseries-engines-without-feature
+(defn non-timeseries-drivers-without-feature
   "Return a set of all non-timeseries engines (e.g., everything except Druid) that DO NOT support `feature`."
   [feature]
-  (set/difference non-timeseries-engines (non-timeseries-engines-with-feature feature)))
+  (set/difference non-timeseries-drivers (non-timeseries-drivers-with-feature feature)))
 
 (defmacro expect-with-non-timeseries-dbs
   {:style/indent 0}
   [expected actual]
-  `(datasets/expect-with-engines non-timeseries-engines
+  `(datasets/expect-with-drivers non-timeseries-drivers
      ~expected
      ~actual))
 
 (defmacro expect-with-non-timeseries-dbs-except
   {:style/indent 1}
   [excluded-engines expected actual]
-  `(datasets/expect-with-engines (set/difference non-timeseries-engines (set ~excluded-engines))
+  `(datasets/expect-with-drivers (set/difference non-timeseries-drivers (set ~excluded-engines))
      ~expected
      ~actual))
 
-(defmacro qp-expect-with-all-engines
+(defmacro qp-expect-with-all-drivers
   {:style/indent 0}
   [data query-form & post-process-fns]
   `(expect-with-non-timeseries-dbs
@@ -62,10 +62,10 @@
          ~@post-process-fns)))
 
 ;; TODO - this is only used in a single place, consider removing it
-(defmacro qp-expect-with-engines
+(defmacro qp-expect-with-drivers
   {:style/indent 1}
   [datasets data query-form]
-  `(datasets/expect-with-engines ~datasets
+  `(datasets/expect-with-drivers ~datasets
      {:status    :completed
       :row_count ~(count (:rows data))
       :data      ~data}

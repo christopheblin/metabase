@@ -8,7 +8,7 @@
              [util :as tu]]
             [metabase.test.data
              [dataset-definitions :as defs]
-             [datasets :refer [expect-with-engines]]
+             [datasets :refer [expect-with-drivers]]
              [interface :as i]
              [sql :as sql.tx]]
             [toucan.db :as db]))
@@ -41,7 +41,7 @@
 
 ;; Query PG using a report-timezone set to pacific time. Should adjust the query parameter using that report timezone
 ;; and should return the timestamp in pacific time as well
-(expect-with-engines [:postgres :mysql]
+(expect-with-drivers [:postgres :mysql]
   default-pacific-results
   (with-tz-db
     (tu/with-temporary-setting-values [report-timezone "America/Los_Angeles"]
@@ -72,7 +72,7 @@
 (def ^:private process-query' (comp set qpt/rows qp/process-query))
 
 ;; Test that native dates are parsed with the report timezone (when supported)
-(expect-with-engines [:postgres :mysql]
+(expect-with-drivers [:postgres :mysql]
   default-pacific-results-for-params
   (with-tz-db
     (tu/with-temporary-setting-values [report-timezone "America/Los_Angeles"]
@@ -90,7 +90,7 @@
                      {:type "date/single" :target ["variable" ["template-tag" "date2"]] :value "2014-08-02T06:00:00.000000"}]}))))
 
 ;; This does not currently work for MySQL
-(expect-with-engines [:postgres :mysql]
+(expect-with-drivers [:postgres :mysql]
   default-pacific-results-for-params
   (with-tz-db
     (tu/with-temporary-setting-values [report-timezone "America/Los_Angeles"]
@@ -107,7 +107,7 @@
         :parameters [{:type "date/range", :target ["dimension" ["template-tag" "ts_range"]], :value "2014-08-02~2014-08-03"}]}))))
 
 ;; Querying using a single date
-(expect-with-engines [:postgres :mysql]
+(expect-with-drivers [:postgres :mysql]
   default-pacific-results-for-params
   (with-tz-db
     (tu/with-temporary-setting-values [report-timezone "America/Los_Angeles"]
@@ -125,7 +125,7 @@
 
 ;; This is the same answer as above but uses timestamp with the timezone included. The report timezone is still
 ;; pacific though, so it should return as pacific regardless of how the filter was specified
-(expect-with-engines [:postgres :mysql]
+(expect-with-drivers [:postgres :mysql]
   default-pacific-results
   (with-tz-db
     (tu/with-temporary-setting-values [report-timezone "America/Los_Angeles"]
@@ -135,7 +135,7 @@
           set))))
 
 ;; Checking UTC report timezone filtering and responses
-(expect-with-engines [:postgres :bigquery :mysql]
+(expect-with-drivers [:postgres :bigquery :mysql]
   default-utc-results
   (with-tz-db
     (tu/with-temporary-setting-values [report-timezone "UTC"]
@@ -146,7 +146,7 @@
 
 ;; With no report timezone, the JVM timezone is used. For our tests this is UTC so this should be the same as
 ;; specifying UTC for a report timezone
-(expect-with-engines [:postgres :bigquery :mysql]
+(expect-with-drivers [:postgres :bigquery :mysql]
   default-utc-results
   (with-tz-db
     (-> (data/run-mbql-query users

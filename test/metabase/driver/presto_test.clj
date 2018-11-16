@@ -75,7 +75,7 @@
   (#'presto/quote+combine-names "weird . \"schema" "weird.table\" name"))
 
 ;; DESCRIBE-DATABASE
-(datasets/expect-with-engine :presto
+(datasets/expect-with-driver :presto
   {:tables #{{:name "test_data_categories" :schema "default"}
              {:name "test_data_venues"     :schema "default"}
              {:name "test_data_checkins"   :schema "default"}
@@ -88,7 +88,7 @@
                                                       :name))))))
 
 ;; DESCRIBE-TABLE
-(datasets/expect-with-engine :presto
+(datasets/expect-with-driver :presto
   {:name   "test_data_venues"
    :schema "default"
    :fields #{{:name          "name",
@@ -112,7 +112,7 @@
   (driver/describe-table :presto (data/db) (db/select-one 'Table :id (data/id :venues))))
 
 ;;; TABLE-ROWS-SAMPLE
-(datasets/expect-with-engine :presto
+(datasets/expect-with-driver :presto
   [["Red Medicine"]
    ["Stout Burgers & Beers"]
    ["The Apple Pan"]
@@ -157,13 +157,13 @@
     (catch Exception e
       (.getMessage e))))
 
-(datasets/expect-with-engine :presto
+(datasets/expect-with-driver :presto
   "UTC"
   (tu/db-timezone-id))
 
 ;; Query cancellation test, needs careful coordination between the query thread, cancellation thread to ensure
 ;; everything works correctly together
-(datasets/expect-with-engine :presto
+(datasets/expect-with-driver :presto
   [false ;; Ensure the query promise hasn't fired yet
    false ;; Ensure the cancellation promise hasn't fired yet
    true  ;; Was query called?

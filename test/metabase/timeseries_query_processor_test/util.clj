@@ -36,6 +36,6 @@
 (defmacro expect-with-timeseries-dbs
   {:style/indent 0}
   [expected actual]
-  `(datasets/expect-with-engines event-based-dbs
+  `(datasets/expect-with-drivers event-based-dbs
      (with-flattened-dbdef ~expected)
      (with-flattened-dbdef ~actual)))

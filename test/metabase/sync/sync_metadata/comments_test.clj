@@ -27,7 +27,7 @@
      {:field-name "no_comment", :base-type :type/Text}]
     [["foo" "bar"]]]])
 
-(datasets/expect-with-engines #{:h2 :postgres}
+(datasets/expect-with-drivers #{:h2 :postgres}
   #{{:name (data/format-name "id"), :description nil}
     {:name (data/format-name "with_comment"), :description "comment"}
     {:name (data/format-name "no_comment"), :description nil}}
@@ -40,7 +40,7 @@
     [{:field-name "updated_desc", :base-type :type/Text, :field-comment "original comment"}]
     [["foo"]]]])
 
-(datasets/expect-with-engines #{:h2 :postgres}
+(datasets/expect-with-drivers #{:h2 :postgres}
   #{{:name (data/format-name "id"), :description nil}
     {:name (data/format-name "updated_desc"), :description "updated description"}}
   (data/with-temp-db [db update-desc]
@@ -56,7 +56,7 @@
     [{:field-name "comment_after_sync", :base-type :type/Text}]
     [["foo"]]]])
 
-(datasets/expect-with-engines #{:h2 :postgres}
+(datasets/expect-with-drivers #{:h2 :postgres}
   #{{:name (data/format-name "id"), :description nil}
     {:name (data/format-name "comment_after_sync"), :description "added comment"}}
   (data/with-temp-db [db comment-after-sync]
@@ -79,13 +79,13 @@
   (set (map (partial into {}) (db/select ['Table :name :description] :db_id (u/get-id db)))))
 
 ;; test basic comments on table
-(datasets/expect-with-engines #{:h2 :postgres}
+(datasets/expect-with-drivers #{:h2 :postgres}
   #{{:name (data/format-name "table_with_comment"), :description "table comment"}}
   (data/with-temp-db [db (basic-table "table_with_comment" "table comment")]
     (db->tables db)))
 
 ;; test changing the description in metabase on table to check it is not overwritten by comment in source db when resyncing
-(datasets/expect-with-engines #{:h2 :postgres}
+(datasets/expect-with-drivers #{:h2 :postgres}
   #{{:name (data/format-name "table_with_updated_desc"), :description "updated table description"}}
   (data/with-temp-db [db (basic-table "table_with_updated_desc" "table comment")]
     ;; change the description in metabase while the source table comment remains the same
@@ -95,7 +95,7 @@
     (db->tables db)))
 
 ;; test adding a comment to the source table that was initially empty, so we can check that the resync picks it up
-(datasets/expect-with-engines #{:h2 :postgres}
+(datasets/expect-with-drivers #{:h2 :postgres}
   #{{:name (data/format-name "table_with_comment_after_sync"), :description "added comment"}}
   (data/with-temp-db [db (basic-table "table_with_comment_after_sync" nil)]
     ;; modify the source DB to add the comment and resync

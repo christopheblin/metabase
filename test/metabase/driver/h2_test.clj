@@ -6,7 +6,7 @@
              [query-processor :as qp]]
             [metabase.driver.h2 :as h2]
             [metabase.models.database :refer [Database]]
-            [metabase.test.data.datasets :refer [expect-with-engine]]
+            [metabase.test.data.datasets :refer [expect-with-driver]]
             [metabase.test.util :as tu]
             [toucan.db :as db]))
 
@@ -41,7 +41,7 @@
   (binding [mdb/*allow-potentailly-unsafe-connections* true]
     (driver/can-connect? :h2 {:db (str (System/getProperty "user.dir") "/pigeon_sightings")})))
 
-(expect-with-engine :h2
+(expect-with-driver :h2
   "UTC"
   (tu/db-timezone-id))
 

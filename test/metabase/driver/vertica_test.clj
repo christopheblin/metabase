@@ -1,11 +1,10 @@
 (ns metabase.driver.vertica-test
   (:require [expectations :refer [expect]]
-            [metabase.driver.vertica :as vertica]
-            [metabase.test.data.datasets :refer [expect-with-engine]]
-            [metabase.test.util :as tu]
-            [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]))
+            [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
+            [metabase.test.data.datasets :refer [expect-with-driver]]
+            [metabase.test.util :as tu]))
 
-(expect-with-engine :vertica
+(expect-with-driver :vertica
   "UTC"
   (tu/db-timezone-id))
 

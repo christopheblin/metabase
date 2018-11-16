@@ -16,7 +16,7 @@
 ;; This tests populating the timezone field for a given database. The
 ;; sync happens automatically, so this test removes it first to ensure
 ;; that it gets set when missing
-(datasets/expect-with-engines #{:h2 :postgres}
+(datasets/expect-with-drivers #{:h2 :postgres}
   (concat
    (repeat 2 {:timezone-id "UTC"})
    [true true true])
@@ -40,7 +40,7 @@
        (boolean (time/time-zone-for-id (db-timezone db)))])))
 
 ;; TODO - this works for me ok with Postgres 9.6 & Java 10. Returns Australia/Hobart
-(datasets/expect-with-engines #{:postgres}
+(datasets/expect-with-drivers #{:postgres}
   ["UTC" "UTC"]
   (data/dataset test-data
     (let [db (data/db)]

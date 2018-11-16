@@ -2,8 +2,7 @@
   "Interface + implementations for loading test datasets for different drivers, and getting information about the
   dataset's tables, fields, etc.
 
-  TODO - we should seriously rename this namespace to something like `metabase.test.driver` or something like that.
-  Also need to stop using 'engine' to mean 'driver keyword'."
+  TODO - we should seriously rename this namespace to something like `metabase.test.driver` or something like that."
   (:require [clojure.string :as s]
             [clojure.tools.logging :as log]
             [colorize.core :as color]
@@ -76,7 +75,7 @@
      (driver/with-driver ~driver
        ~@body)))
 
-(defmacro expect-with-engine
+(defmacro expect-with-driver
   "Generate a unit test that only runs if we're currently testing against ENGINE, and that binds `*driver*` to the
   driver for ENGINE."
   {:style/indent 1}
@@ -86,7 +85,7 @@
        (driver/with-driver ~driver ~expected)
        (driver/with-driver ~driver ~actual))))
 
-(defmacro expect-with-engines
+(defmacro expect-with-drivers
   "Generate unit tests for all drivers in `DRIVERS`; each test will only run if we're currently testing the
   corresponding dataset. `*driver*` is bound to the current dataset inside each test."
   {:style/indent 1}
@@ -95,16 +94,16 @@
   ;; speeds up loading of metabase.driver.query-processor-test significantly
   `(let [e# (fn [driver#] (driver/with-driver driver# ~expected))
          a# (fn [driver#] (driver/with-driver driver# ~actual))]
-     (defn ~(vary-meta (symbol (str "expect-with-engines-" (hash &form)))
+     (defn ~(vary-meta (symbol (str "expect-with-drivers-" (hash &form)))
                        assoc :expectation true)
        []
        (doseq [driver# ~drivers]
          (when-testing-driver driver#
            (doexpect (e# driver#) (a# driver#)))))))
 
-(defmacro expect-with-all-engines
+(defmacro expect-with-all-drivers
   "Generate unit tests for all drivers specified in `DRIVERS`. `*driver*` is bound to the current driver inside each
   test."
   {:style/indent 0}
   [expected actual]
-  `(expect-with-engines test-drivers ~expected ~actual))
+  `(expect-with-drivers test-drivers ~expected ~actual))
